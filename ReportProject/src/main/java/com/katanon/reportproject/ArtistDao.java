@@ -79,4 +79,38 @@ public class ArtistDao implements Dao<Artist> {
         }
         return list;
     }
+    
+    public List<ArtistReport> getArtistByTotalPrice(String begin,String end,int limit) {
+        ArrayList<ArtistReport> list = new ArrayList();
+        String sql = """
+                     SELECT art.*, SUM(ini.Quantity) TotalQuantity,
+                            SUM(ini.UnitPrice*ini.Quantity) as TotalPrice FROM artists art
+                     INNER JOIN albums alb ON alb.ArtistId=art.ArtistId
+                     INNER JOIN tracks tra ON tra.AlbumId=alb.AlbumId
+                     INNER JOIN invoice_items ini ON ini.TrackId =tra.TrackId
+                     INNER JOIN invoices inv ON inv.InvoiceId=ini.InvoiceId
+                            AND inv.InvoiceDate BETWEEN ? AND ?
+                     GROUP BY art.ArtistId
+                     ORDER BY TotalPrice DESC
+                     LIMIT ?
+                     """;
+        Connection conn = DatabaseHelper.getConnect();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, begin);
+            stmt.setString(2, end);
+            stmt.setInt(3, limit);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                ArtistReport obj = ArtistReport.fromRS(rs);
+                list.add(obj);
+
+            }
+
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return list;
+    }
 }
